@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Global Intelligence Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <meta
+      name="description"
+      content="Painel de controle de inteligência e coleta de dados globais."
+    />
+  </head>
+  <body class="bg-slate-950 text-slate-100 min-h-screen p-6 relative">
+    <div class="max-w-7xl mx-auto space-y-6">
+      <!-- Header & Action Sync -->
+      <header
+        class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-900 p-6 rounded-xl border border-slate-800 gap-4"
+      >
+        <div>
+          <h1
+            class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent"
+          >
+            Global Intelligence Engine
+          </h1>
+          <p class="text-xs text-slate-400 mt-1">
+            Persistência Relacional SQL • Coleta Real-Time sem Mocks
+          </p>
+        </div>
+        <a
+          href="{{ url_for('main.sincronizar') }}"
+          class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm px-4 py-2 rounded-lg transition-all shadow-lg shadow-indigo-600/30 flex items-center gap-2"
+        >
+          <span>🔄</span> Disparar Ingestão (Sync DB)
+        </a>
+      </header>
+
+      <!-- Dynamic Metrics -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div
+          class="bg-slate-900 p-5 rounded-xl border border-slate-800 text-center"
+        >
+          <span class="text-3xl font-bold text-indigo-400">{{ totais }}</span>
+          <span class="block text-xs text-slate-500 mt-1"
+            >Notícias Persistidas</span
+          >
+        </div>
+        <div
+          class="bg-slate-900 p-5 rounded-xl border border-slate-800 text-center"
+        >
+          <span class="text-3xl font-bold text-purple-400"
+            >{{ paises|length }}</span
+          >
+          <span class="block text-xs text-slate-500 mt-1"
+            >Origens Internacionais</span
+          >
+        </div>
+        <div
+          class="bg-slate-900 p-5 rounded-xl border border-slate-800 text-center"
+        >
+          <span class="text-3xl font-bold text-emerald-400">100% Real</span>
+          <span class="block text-xs text-slate-500 mt-1"
+            >NLP & ML Semantic Engine</span
+          >
+        </div>
+      </div>
+
+      <!-- Real Trends Extracted via NLP -->
+      <section class="bg-slate-900 p-6 rounded-xl border border-slate-800">
+        <h3 class="text-sm font-semibold text-slate-400 mb-4">
+          🔥 Palavras mais Frequentes no Lote (NLP Real)
+        </h3>
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+          {% for t in trends %}
+          <div
+            class="bg-slate-950 p-3 rounded-lg border border-slate-800/80 text-center"
+          >
+            <span class="block text-sm font-bold text-slate-200"
+              >{{ t.topico }}</span
+            >
+            <span class="text-xs text-indigo-400">{{ t.mencoes }} menções</span>
+          </div>
+          {% else %}
+          <div class="col-span-6 text-center text-slate-500 text-xs py-2">
+            Nenhuma tendência extraída ainda. Dispare a Ingestão para atualizar.
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <!-- Filtros Interativos em JS -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-1">
+        <button
+          onclick="filtrar('todas')"
+          class="filter-btn active bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-lg border border-indigo-500 transition-all"
+        >
+          Todas
+        </button>
+        <button
+          onclick="filtrar('guerra')"
+          class="filter-btn bg-slate-900 text-slate-400 hover:text-slate-200 text-xs px-3 py-1.5 rounded-lg border border-slate-800 transition-all"
+        >
+          Guerra
+        </button>
+        <button
+          onclick="filtrar('política')"
+          class="filter-btn bg-slate-900 text-slate-400 hover:text-slate-200 text-xs px-3 py-1.5 rounded-lg border border-slate-800 transition-all"
+        >
+          Política
+        </button>
+        <button
+          onclick="filtrar('economia')"
+          class="filter-btn bg-slate-900 text-slate-400 hover:text-slate-200 text-xs px-3 py-1.5 rounded-lg border border-slate-800 transition-all"
+        >
+          Economia
+        </button>
+        <button
+          onclick="filtrar('direitos')"
+          class="filter-btn bg-slate-900 text-slate-400 hover:text-slate-200 text-xs px-3 py-1.5 rounded-lg border border-slate-800 transition-all"
+        >
+          Direitos
+        </button>
+      </div>
+
+      <!-- Grid de Noticias -->
+      <section class="grid grid-cols-1 md:grid-cols-2 gap-4" id="noticiasGrid">
+        {% for n in noticias %}
+        <div
+          class="noticia-card bg-slate-900 p-5 rounded-xl border border-slate-800 hover:border-indigo-500/50 transition-all flex flex-col justify-between"
+          data-categorias="{{ n.categorias|join(',') if n.categorias is sequence and n.categorias is not string else n.categorias }}"
+        >
+          <a
+            href="{{ n.link if n.link else '#' }}"
+            target="_blank"
+            class="text-slate-100 font-semibold text-base hover:text-indigo-400 leading-snug mb-3"
+          >
+            {{ n.titulo }}
+          </a>
+          <div
+            class="flex items-center gap-2 text-xs text-slate-500 mt-2 flex-wrap"
+          >
+            <span class="text-indigo-400 font-semibold">{{ n.fonte }}</span>
+            <span>{{ n.pais }}</span>
+            {% if n.categorias %} {% set cats = n.categorias.split(',') if
+            n.categorias is string else n.categorias %} {% for c in cats %} {%
+            if c and c.strip() %}
+            <span
+              class="bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded uppercase text-[10px] font-bold"
+              >{{ c.strip() }}</span
+            >
+            {% endif %} {% endfor %} {% endif %}
+            <span class="ml-auto text-amber-400 font-semibold"
+              >⭐ {{ n.score }}</span
+            >
+          </div>
+        </div>
+        {% else %}
+        <div
+          class="col-span-2 bg-slate-900 p-12 rounded-xl border border-slate-800 text-center"
+        >
+          <p class="text-slate-400 text-sm">
+            Nenhum registro encontrado no banco de dados.
+          </p>
+          <p class="text-slate-600 text-xs mt-1">
+            Clique em "Disparar Ingestão (Sync DB)" para popular o banco.
+          </p>
+        </div>
+        {% endfor %}
+      </section>
+    </div>
+
+    <!-- Chatbot Widget Floating -->
+    <div class="fixed bottom-6 right-6 z-50">
+      <!-- Botão para Abrir Chat -->
+      <button
+        id="chatToggle"
+        onclick="toggleChat()"
+        class="bg-indigo-600 hover:bg-indigo-500 text-white p-4 rounded-full shadow-2xl transition-all flex items-center justify-center font-bold text-lg hover:scale-105"
+      >
+        💬
+      </button>
+
+      <!-- Janela do Chat -->
+      <div
+        id="chatWindow"
+        class="hidden flex-col w-80 sm:w-96 h-[420px] bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden mt-3"
+      >
+        <div
+          class="bg-slate-950 p-3 border-b border-slate-800 flex justify-between items-center"
+        >
+          <span
+            class="text-xs font-bold text-indigo-400 flex items-center gap-2"
+          >
+            <span
+              class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"
+            ></span>
+            AI Assistant (Fale comigo a qualquer momento)
+          </span>
+          <button
+            onclick="toggleChat()"
+            class="text-slate-400 hover:text-white text-xs"
+          >
+            ✖
+          </button>
+        </div>
+
+        <div
+          id="chatMessages"
+          class="flex-1 p-3 overflow-y-auto space-y-3 text-xs"
+        >
+          <div class="bg-slate-800 text-slate-200 p-2.5 rounded-lg max-w-[85%]">
+            Olá! Pergunte sobre qualquer evento geopolítico, conflito ou líder
+            cadastrado.
+          </div>
+        </div>
+
+        <form
+          onsubmit="enviarMensagem(event)"
+          class="p-2 bg-slate-950 border-t border-slate-800 flex gap-2"
+        >
+          <input
+            type="text"
+            id="chatInput"
+            placeholder="Ex: O que está acontecendo no Irã?"
+            class="flex-1 bg-slate-900 border border-slate-800 text-xs text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500"
+          />
+          <button
+            type="submit"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-lg text-xs font-semibold"
+          >
+            Enviar
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Scripts do Frontend -->
+    <script>
+      function filtrar(categoria) {
+        const cards = document.querySelectorAll(".noticia-card");
+        const btns = document.querySelectorAll(".filter-btn");
+
+        btns.forEach((btn) => {
+          if (
+            btn.innerText.toLowerCase() === categoria ||
+            (categoria === "todas" && btn.innerText === "Todas")
+          ) {
+            btn.classList.add(
+              "bg-indigo-600",
+              "text-white",
+              "border-indigo-500",
+            );
+            btn.classList.remove(
+              "bg-slate-900",
+              "text-slate-400",
+              "border-slate-800",
+            );
+          } else {
+            btn.classList.remove(
+              "bg-indigo-600",
+              "text-white",
+              "border-indigo-500",
+            );
+            btn.classList.add(
+              "bg-slate-900",
+              "text-slate-400",
+              "border-slate-800",
+            );
+          }
+        });
+
+        cards.forEach((card) => {
+          const cats = card.getAttribute("data-categorias") || "";
+          if (categoria === "todas" || cats.includes(categoria)) {
+            card.style.display = "flex";
+          } else {
+            card.style.display = "none";
+          }
+        });
+      }
+
+      function toggleChat() {
+        const win = document.getElementById("chatWindow");
+        win.classList.toggle("hidden");
+        win.classList.toggle("flex");
+      }
+
+      function parseMarkdown(texto) {
+        // Converte links markdown [Texto](URL) em tags <a>
+        let html = texto.replace(
+          /\[([^\]]+)\]\(([^)]+)\)/g,
+          '<a href="$2" target="_blank" class="text-indigo-400 underline font-semibold hover:text-indigo-300">$1</a>',
+        );
+        // Converte negrito **texto** em tags <strong>
+        html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+        return html;
+      }
+
+      async function enviarMensagem(e) {
+        e.preventDefault();
+        const input = document.getElementById("chatInput");
+        const messages = document.getElementById("chatMessages");
+        const msg = input.value.trim();
+
+        if (!msg) return;
+
+        // Insere mensagem do usuário
+        messages.innerHTML += `<div class="bg-indigo-600 text-white p-2.5 rounded-lg max-w-[85%] ml-auto">${msg}</div>`;
+        input.value = "";
+        messages.scrollTop = messages.scrollHeight;
+
+        // Loader animado
+        const loaderId = "loader-" + Date.now();
+        messages.innerHTML += `<div id="${loaderId}" class="bg-slate-800 text-slate-400 p-2.5 rounded-lg max-w-[85%] flex items-center gap-2">
+                <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-ping"></span> Vetorizando consulta...
+            </div>`;
+        messages.scrollTop = messages.scrollHeight;
+
+        try {
+          const res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: msg }),
+          });
+          const data = await res.json();
+
+          document.getElementById(loaderId).remove();
+
+          const textoFormatado = parseMarkdown(data.response);
+          messages.innerHTML += `<div class="bg-slate-800 text-slate-200 p-2.5 rounded-lg max-w-[85%] whitespace-pre-line leading-relaxed">${textoFormatado}</div>`;
+        } catch (err) {
+          document.getElementById(loaderId).remove();
+          messages.innerHTML += `<div class="bg-rose-950 text-rose-300 p-2.5 rounded-lg max-w-[85%]">Erro na conexão com a API semântica.</div>`;
+        }
+        messages.scrollTop = messages.scrollHeight;
+      }
+    </script>
+  </body>
+</html>
