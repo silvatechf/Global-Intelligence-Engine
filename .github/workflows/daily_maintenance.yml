@@ -1,0 +1,45 @@
+name: Daily Maintenance Bot
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Executa diariamente à meia-noite (UTC)
+  workflow_dispatch:      # Permite disparo manual via interface do GitHub
+
+jobs:
+  auto-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run Maintenance Script
+        run: |
+          if [ -f "auto_maintain.py" ]; then
+            python auto_maintain.py
+          else
+            echo "::warning title=Script Missing::auto_maintain.py não foi localizado."
+          fi
+
+      - name: Commit and Push Status
+        run: |
+          git config user.name "silvatechf"
+          git config user.email "silvatechf@users.noreply.github.com"
+          
+          # Adiciona o arquivo atualizado
+          git add SECURITY_LOG_STATUS.md
+          
+          # Realiza o commit e push apenas se houver alterações no staged
+          if ! git diff --staged --quiet; then
+            git commit -m "chore(bot): automated maintenance status update [skip ci]"
+            git push
+          else
+            echo "Nenhuma alteração detectada em SECURITY_LOG_STATUS.md. Commit ignorado."
+          fi
