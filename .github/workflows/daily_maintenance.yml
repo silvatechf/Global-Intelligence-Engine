@@ -1,15 +1,19 @@
+
 name: Daily Maintenance Bot
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Executa diariamente à meia-noite (UTC)
-  workflow_dispatch:      # Permite disparo manual via interface do GitHub
+    - cron: '0 0 * * *' # Todos os dias à meia-noite UTC
+  workflow_dispatch:
+    # Permite executar manualmente pelo GitHub Actions
+
+permissions:
+  contents: write
 
 jobs:
   auto-commit:
+    name: Automated Maintenance
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout Repository
@@ -21,25 +25,47 @@ jobs:
           python-version: '3.12'
 
       - name: Run Maintenance Script
+        shell: bash
         run: |
-          if [ -f "auto_maintain.py" ]; then
-            python auto_maintain.py
+          if [ ! -f "auto_maintain.py" ]; then
+            echo "::error title=Script Missing::auto_maintain.py não foi localizado na raiz do repositório."
+            exit 1
+          fi
+
+          echo "A executar o script de manutenção..."
+          python auto_maintain.py
+
+      - name: Validate Maintenance Output
+        shell: bash
+        run: |
+          if [ -f "SECURITY_LOG_STATUS.md" ]; then
+            echo "Ficheiro de estado encontrado."
+            echo "STATUS_FILE_EXISTS=true" >> "$GITHUB_ENV"
           else
-            echo "::warning title=Script Missing::auto_maintain.py não foi localizado."
+            echo "::warning title=Status File Missing::SECURITY_LOG_STATUS.md não foi criado pelo script de manutenção."
+            echo "STATUS_FILE_EXISTS=false" >> "$GITHUB_ENV"
           fi
 
       - name: Commit and Push Status
+        shell: bash
         run: |
           git config user.name "silvatechf"
           git config user.email "silvatechf@users.noreply.github.com"
-          
-          # Adiciona o arquivo atualizado
-          git add SECURITY_LOG_STATUS.md
-          
-          # Realiza o commit e push apenas se houver alterações no staged
-          if ! git diff --staged --quiet; then
-            git commit -m "chore(bot): automated maintenance status update [skip ci]"
-            git push
-          else
-            echo "Nenhuma alteração detectada em SECURITY_LOG_STATUS.md. Commit ignorado."
+
+          if [ "$STATUS_FILE_EXISTS" != "true" ]; then
+            echo "Commit ignorado: o ficheiro de estado não existe."
+            echo "Verifica a geração de SECURITY_LOG_STATUS.md em auto_maintain.py."
+            exit 0
           fi
+
+          git add -- SECURITY_LOG_STATUS.md
+
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração no ficheiro de estado."
+            echo "Não é necessário criar um commit."
+            exit 0
+          fi
+
+          git commit -m "chore(bot): update security log status"
+
+          git push
